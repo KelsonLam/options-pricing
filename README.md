@@ -25,10 +25,23 @@ describing the real world.
 No SciPy dependency: the normal distribution comes from Python's standard
 library `statistics.NormalDist`.
 
+## Try it live
+
+There is an interactive Black-Scholes calculator in [`docs/index.html`](docs/index.html).
+With GitHub Pages enabled on this repo it runs in the browser at
+`https://KelsonLam.github.io/options-pricing/`: drag the sliders and watch the
+price, the Greeks, and the value curve update in real time.
+
 ## Example output
 
-These come straight from the plotting code in this repo (a call with strike
-100, one year to expiry, 5% rate, 20% volatility).
+This animation shows the idea time decay captures: a call's value sits above its
+payoff when there is time left, and collapses onto the kinked intrinsic line as
+expiry approaches.
+
+![Animation of a call's value decaying toward its payoff as expiry nears](images/theta_decay.gif)
+
+The static charts below come straight from the plotting code in this repo (a
+call with strike 100, one year to expiry, 5% rate, 20% volatility).
 
 The value curve sits above the kinked intrinsic payoff. The gap between them is
 time value, and it is largest at the money:

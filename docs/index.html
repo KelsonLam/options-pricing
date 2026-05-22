@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Black-Scholes Option Calculator</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2027; --ink: #e6edf3; --muted: #9aa7b2;
+    --accent: #4a9eff; --good: #3fb950; --bad: #f85149; --line: #2d343c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
+  .sub { color: var(--muted); margin: 0 0 1.75rem; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line);
+           border-radius: 10px; padding: 1.25rem; }
+  .panel h2 { font-size: 1rem; margin: 0 0 1rem; color: var(--muted);
+              text-transform: uppercase; letter-spacing: 0.04em; }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.15rem; }
+  .field { margin-bottom: 0.9rem; }
+  .field input[type=range] { width: 100%; accent-color: var(--accent); }
+  .field .val { float: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .toggle { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .toggle button { flex: 1; padding: 0.5rem; border: 1px solid var(--line);
+    background: transparent; color: var(--ink); border-radius: 8px; cursor: pointer; }
+  .toggle button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .price { font-size: 2.4rem; font-weight: 700; margin: 0.25rem 0 0.1rem;
+           font-variant-numeric: tabular-nums; }
+  .price small { font-size: 0.95rem; color: var(--muted); font-weight: 400; }
+  table.greeks { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  table.greeks td { padding: 0.35rem 0; border-bottom: 1px solid var(--line);
+    font-variant-numeric: tabular-nums; }
+  table.greeks td:first-child { color: var(--muted); }
+  table.greeks td:last-child { text-align: right; }
+  canvas { width: 100%; height: auto; display: block; margin-top: 0.5rem; }
+  footer { color: var(--muted); font-size: 0.85rem; margin-top: 2rem;
+           border-top: 1px solid var(--line); padding-top: 1rem; }
+  a { color: var(--accent); }
+  code { background: #11161c; padding: 0.1rem 0.35rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Black-Scholes Option Calculator</h1>
+  <p class="sub">Move the sliders and watch the price, the Greeks, and the value
+  curve update live. Same maths as the Python library in this repo.</p>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Inputs</h2>
+      <div class="toggle">
+        <button id="callBtn" class="active" onclick="setType('call')">Call</button>
+        <button id="putBtn" onclick="setType('put')">Put</button>
+      </div>
+      <div class="field"><label>Spot price (S) <span class="val" id="vS"></span></label>
+        <input type="range" id="S" min="20" max="200" step="1" value="100" oninput="recompute()"></div>
+      <div class="field"><label>Strike (K) <span class="val" id="vK"></span></label>
+        <input type="range" id="K" min="20" max="200" step="1" value="100" oninput="recompute()"></div>
+      <div class="field"><label>Time to expiry, years (T) <span class="val" id="vT"></span></label>
+        <input type="range" id="T" min="0.05" max="3" step="0.05" value="1" oninput="recompute()"></div>
+      <div class="field"><label>Risk-free rate (r) <span class="val" id="vr"></span></label>
+        <input type="range" id="r" min="0" max="0.15" step="0.005" value="0.05" oninput="recompute()"></div>
+      <div class="field"><label>Volatility (sigma) <span class="val" id="vsig"></span></label>
+        <input type="range" id="sig" min="0.05" max="1.0" step="0.01" value="0.20" oninput="recompute()"></div>
+      <div class="field"><label>Dividend yield (q) <span class="val" id="vq"></span></label>
+        <input type="range" id="q" min="0" max="0.10" step="0.005" value="0" oninput="recompute()"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Output</h2>
+      <div class="price" id="price">--</div>
+      <table class="greeks">
+        <tr><td>Delta</td><td id="delta">--</td></tr>
+        <tr><td>Gamma</td><td id="gamma">--</td></tr>
+        <tr><td>Vega (per 1% vol)</td><td id="vega">--</td></tr>
+        <tr><td>Theta (per day)</td><td id="theta">--</td></tr>
+        <tr><td>Rho (per 1% rate)</td><td id="rho">--</td></tr>
+      </table>
+      <canvas id="chart" width="440" height="240"></canvas>
+    </div>
+  </div>
+
+  <footer>
+    Built with the Black-Scholes-Merton model. The curve shows option value
+    against spot, with the kinked intrinsic payoff for comparison. This is an
+    educational tool, not trading advice. Source:
+    <a href="https://github.com/KelsonLam/options-pricing">KelsonLam/options-pricing</a>.
+  </footer>
+</div>
+
+<script>
+let optionType = 'call';
+
+function erf(x){
+  const s = x < 0 ? -1 : 1; x = Math.abs(x);
+  const t = 1 / (1 + 0.3275911 * x);
+  const y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x);
+  return s * y;
+}
+const N = x => 0.5 * (1 + erf(x / Math.SQRT2));
+const phi = x => Math.exp(-0.5*x*x) / Math.sqrt(2*Math.PI);
+
+function bs(S, K, T, r, sig, q, type){
+  if (T <= 0 || sig <= 0){
+    const fwd = S*Math.exp(-q*T) - K*Math.exp(-r*T);
+    const intrinsic = type === 'call' ? Math.max(S-K,0) : Math.max(K-S,0);
+    return { price: intrinsic, delta: NaN, gamma: NaN, vega: NaN, theta: NaN, rho: NaN };
+  }
+  const vt = sig*Math.sqrt(T);
+  const d1 = (Math.log(S/K) + (r - q + 0.5*sig*sig)*T) / vt;
+  const d2 = d1 - vt;
+  const dd = Math.exp(-q*T), dr = Math.exp(-r*T);
+  let price, delta, theta, rho;
+  if (type === 'call'){
+    price = S*dd*N(d1) - K*dr*N(d2);
+    delta = dd*N(d1);
+    theta = -S*dd*phi(d1)*sig/(2*Math.sqrt(T)) - r*K*dr*N(d2) + q*S*dd*N(d1);
+    rho = K*T*dr*N(d2);
+  } else {
+    price = K*dr*N(-d2) - S*dd*N(-d1);
+    delta = dd*(N(d1)-1);
+    theta = -S*dd*phi(d1)*sig/(2*Math.sqrt(T)) + r*K*dr*N(-d2) - q*S*dd*N(-d1);
+    rho = -K*T*dr*N(-d2);
+  }
+  const gamma = dd*phi(d1)/(S*vt);
+  const vega = S*dd*phi(d1)*Math.sqrt(T);
+  return { price, delta, gamma, vega, theta, rho };
+}
+
+function setType(t){
+  optionType = t;
+  document.getElementById('callBtn').classList.toggle('active', t==='call');
+  document.getElementById('putBtn').classList.toggle('active', t==='put');
+  recompute();
+}
+
+function drawChart(K, T, r, sig, q, type){
+  const c = document.getElementById('chart'), ctx = c.getContext('2d');
+  const W = c.width, H = c.height, pad = 32;
+  ctx.clearRect(0,0,W,H);
+  const lo = 20, hi = 200, n = 120;
+  let vals = [], intr = [], maxV = 0;
+  for (let i=0;i<=n;i++){
+    const s = lo + (hi-lo)*i/n;
+    const v = bs(s,K,T,r,sig,q,type).price;
+    const it = type==='call' ? Math.max(s-K,0) : Math.max(K-s,0);
+    vals.push(v); intr.push(it); maxV = Math.max(maxV, v, it);
+  }
+  const xs = i => pad + (W-2*pad)*i/n;
+  const ys = v => H-pad - (H-2*pad)*(v/(maxV||1));
+  // axes
+  ctx.strokeStyle = '#2d343c'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad,H-pad); ctx.lineTo(W-pad,H-pad); ctx.stroke();
+  // strike marker
+  const kx = pad + (W-2*pad)*((K-lo)/(hi-lo));
+  ctx.strokeStyle = 'rgba(248,81,73,0.5)'; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(kx,pad); ctx.lineTo(kx,H-pad); ctx.stroke(); ctx.setLineDash([]);
+  // intrinsic
+  ctx.strokeStyle = '#9aa7b2'; ctx.beginPath();
+  intr.forEach((v,i)=>{ const x=xs(i),y=ys(v); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
+  // value
+  ctx.strokeStyle = '#4a9eff'; ctx.lineWidth = 2; ctx.beginPath();
+  vals.forEach((v,i)=>{ const x=xs(i),y=ys(v); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
+  ctx.fillStyle = '#9aa7b2'; ctx.font = '11px sans-serif';
+  ctx.fillText('value (blue) vs intrinsic (grey), strike dashed', pad, pad-10);
+}
+
+function recompute(){
+  const S=+S_.value, K=+K_.value, T=+T_.value, r=+r_.value, sig=+sig_.value, q=+q_.value;
+  document.getElementById('vS').textContent = S;
+  document.getElementById('vK').textContent = K;
+  document.getElementById('vT').textContent = T.toFixed(2);
+  document.getElementById('vr').textContent = (r*100).toFixed(1)+'%';
+  document.getElementById('vsig').textContent = (sig*100).toFixed(0)+'%';
+  document.getElementById('vq').textContent = (q*100).toFixed(1)+'%';
+  const g = bs(S,K,T,r,sig,q,optionType);
+  document.getElementById('price').innerHTML = g.price.toFixed(2) + ' <small>per share</small>';
+  document.getElementById('delta').textContent = g.delta.toFixed(4);
+  document.getElementById('gamma').textContent = g.gamma.toFixed(4);
+  document.getElementById('vega').textContent = (g.vega/100).toFixed(4);
+  document.getElementById('theta').textContent = (g.theta/365).toFixed(4);
+  document.getElementById('rho').textContent = (g.rho/100).toFixed(4);
+  drawChart(K,T,r,sig,q,optionType);
+}
+
+const S_=document.getElementById('S'), K_=document.getElementById('K'),
+      T_=document.getElementById('T'), r_=document.getElementById('r'),
+      sig_=document.getElementById('sig'), q_=document.getElementById('q');
+recompute();
+</script>
+</body>
+</html>
