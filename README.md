@@ -119,6 +119,18 @@ The right way to read a Black-Scholes price is as a disciplined baseline and a
 common language, not as the "true" value. Knowing where it breaks is what makes
 it useful.
 
+## American options via a binomial tree
+
+Black-Scholes only prices European options. `binomial.py` adds a
+Cox-Ross-Rubinstein tree that also handles American early exercise, and it
+converges to the Black-Scholes price for European options (a test pins that
+down).
+
+```python
+from options_pricing.binomial import binomial_price
+binomial_price(100, 100, 1, 0.05, 0.20, "put", american=True)
+```
+
 ## Tests
 
 ```bash
