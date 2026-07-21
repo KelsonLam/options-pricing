@@ -1,7 +1,3 @@
-"""Shared chart style: a validated categorical palette on a clean light
-surface, styled for a quant/analytics register rather than matplotlib
-defaults."""
-
 from __future__ import annotations
 
 import matplotlib as mpl
