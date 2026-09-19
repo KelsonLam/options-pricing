@@ -1,8 +1,6 @@
 # Options Pricing (Black-Scholes)
 
-Live: https://kelsonlam.github.io/options-pricing/
-
-![Black-Scholes calculator: sliders for spot, strike, time, rate, volatility and dividend yield, with price, Greeks, and a value-vs-spot curve updating live](docs/media/screenshot.png)
+[Open the interactive options calculator](https://kelsonlam.github.io/options-pricing/) to adjust spot price, strike, time, interest rate, volatility, and dividend yield and see the option price and Greeks update.
 
 A from-scratch implementation of the Black-Scholes-Merton model: it prices
 European calls and puts, computes all five Greeks analytically, backs implied
